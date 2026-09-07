@@ -3,13 +3,15 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
+import mammoth from 'mammoth';
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Lazy initialization of Gemini client
 let aiClient: GoogleGenAI | null = null;
@@ -286,35 +288,226 @@ Output detailed audit scores, flags, and direct replacement suggestions.`;
   }
 });
 
-// 5. AI Parse Old Resume & Migrate Into New Template
+// Helper to strip basic RTF formatting
+function cleanRtf(rtf: string): string {
+  return rtf
+    .replace(/\\par[d]?/g, '\n')
+    .replace(/\\tab/g, '\t')
+    .replace(/\\[a-zA-Z0-9\-]+ ?/g, '')
+    .replace(/[{}]/g, '')
+    .trim();
+}
+
+// Helper to extract printable text strings from legacy binary .doc files
+function extractPrintableFromDoc(buffer: Buffer): string {
+  const binaryStr = buffer.toString('binary');
+  const matches = binaryStr.match(/[\x20-\x7E\r\n\t]{4,}/g) || [];
+  return matches
+    .filter((s) => !s.startsWith('CompObj') && !s.includes('WordDocument') && !s.includes('Microsoft Word'))
+    .join('\n');
+}
+
+// Endpoint to quickly extract text from uploaded files (DOCX, DOC, RTF, TXT, MD)
+app.post('/api/ai/extract-file-text', async (req, res) => {
+  try {
+    const { fileBase64, mimeType, fileName } = req.body;
+    if (!fileBase64 || typeof fileBase64 !== 'string') {
+      return res.status(400).json({ error: 'fileBase64 string is required.' });
+    }
+
+    const lowerName = (fileName || '').toLowerCase();
+    const buffer = Buffer.from(fileBase64, 'base64');
+
+    // 1. DOCX
+    if (lowerName.endsWith('.docx') || mimeType?.includes('wordprocessingml')) {
+      try {
+        const { value: docxText } = await mammoth.extractRawText({ buffer });
+        return res.json({
+          text: docxText || '',
+          format: 'docx',
+          fileName,
+          isBinaryDocument: false,
+        });
+      } catch (err: any) {
+        console.warn('Mammoth docx extraction error:', err);
+      }
+    }
+
+    // 2. Legacy DOC
+    if (lowerName.endsWith('.doc') || mimeType?.includes('msword')) {
+      try {
+        const { value: docText } = await mammoth.extractRawText({ buffer });
+        if (docText && docText.trim().length > 30) {
+          return res.json({
+            text: docText,
+            format: 'doc',
+            fileName,
+            isBinaryDocument: false,
+          });
+        }
+      } catch {
+        // Fallback for OLE2 binary doc
+        const extracted = extractPrintableFromDoc(buffer);
+        return res.json({
+          text: extracted,
+          format: 'doc',
+          fileName,
+          isBinaryDocument: false,
+        });
+      }
+    }
+
+    // 3. Plain Text / Markdown / RTF
+    if (lowerName.endsWith('.txt') || lowerName.endsWith('.md') || mimeType?.startsWith('text/plain') || mimeType?.startsWith('text/markdown')) {
+      const text = buffer.toString('utf-8');
+      return res.json({
+        text,
+        format: 'text',
+        fileName,
+        isBinaryDocument: false,
+      });
+    }
+
+    if (lowerName.endsWith('.rtf') || mimeType?.includes('rtf')) {
+      const rawText = buffer.toString('utf-8');
+      const text = cleanRtf(rawText);
+      return res.json({
+        text,
+        format: 'rtf',
+        fileName,
+        isBinaryDocument: false,
+      });
+    }
+
+    // 4. PDF or Image
+    const isPdf = lowerName.endsWith('.pdf') || mimeType === 'application/pdf';
+    const isImage = /\.(png|jpe?g|webp)$/i.test(lowerName) || mimeType?.startsWith('image/');
+
+    return res.json({
+      text: '',
+      format: isPdf ? 'pdf' : isImage ? 'image' : 'binary',
+      fileName,
+      isBinaryDocument: true,
+      message: isPdf
+        ? 'PDF document loaded. Gemini multimodal engine will parse visual hierarchy, columns, and text directly.'
+        : isImage
+        ? 'Resume image loaded. Gemini multimodal vision will scan and extract all text and layout.'
+        : 'File loaded for direct AI parsing.',
+    });
+  } catch (error: any) {
+    console.error('Error in /api/ai/extract-file-text:', error);
+    return res.status(500).json({ error: error.message || 'Failed to extract text from file.' });
+  }
+});
+
+// 5. AI Parse Old Resume & Migrate Into New Template (Supports PDF, Word DOCX/DOC, Images, RTF, TXT, Raw Text)
 app.post('/api/ai/parse-old-resume', async (req, res) => {
   try {
-    const { oldResumeText } = req.body;
-    if (!oldResumeText || typeof oldResumeText !== 'string' || oldResumeText.trim().length < 20) {
-      return res.status(400).json({ error: 'Please provide valid resume text to parse.' });
+    const { oldResumeText, fileBase64, mimeType, fileName } = req.body;
+
+    let textContent = (oldResumeText || '').trim();
+    let inlineMediaPart: { inlineData: { mimeType: string; data: string } } | null = null;
+    const lowerName = (fileName || '').toLowerCase();
+
+    // Process file if provided
+    if (fileBase64 && typeof fileBase64 === 'string') {
+      const buffer = Buffer.from(fileBase64, 'base64');
+
+      // Check Word documents
+      if (lowerName.endsWith('.docx') || mimeType?.includes('wordprocessingml')) {
+        try {
+          const { value: docxText } = await mammoth.extractRawText({ buffer });
+          if (docxText && docxText.trim().length > 10) {
+            textContent = docxText.trim();
+          }
+        } catch (docxErr) {
+          console.warn('Error reading docx with mammoth:', docxErr);
+        }
+      } else if (lowerName.endsWith('.doc') || mimeType?.includes('msword')) {
+        try {
+          const { value: docText } = await mammoth.extractRawText({ buffer });
+          if (docText && docText.trim().length > 10) {
+            textContent = docText.trim();
+          } else {
+            textContent = extractPrintableFromDoc(buffer);
+          }
+        } catch {
+          textContent = extractPrintableFromDoc(buffer);
+        }
+      } else if (lowerName.endsWith('.pdf') || mimeType === 'application/pdf') {
+        // PDF document: Pass directly to Gemini multimodal via inlineData!
+        inlineMediaPart = {
+          inlineData: {
+            mimeType: 'application/pdf',
+            data: fileBase64,
+          },
+        };
+      } else if (/\.(png|jpe?g|webp)$/i.test(lowerName) || mimeType?.startsWith('image/')) {
+        // Image document (scan / screenshot)
+        let normalizedMime = mimeType || 'image/png';
+        if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) normalizedMime = 'image/jpeg';
+        if (lowerName.endsWith('.png')) normalizedMime = 'image/png';
+        if (lowerName.endsWith('.webp')) normalizedMime = 'image/webp';
+
+        inlineMediaPart = {
+          inlineData: {
+            mimeType: normalizedMime,
+            data: fileBase64,
+          },
+        };
+      } else if (lowerName.endsWith('.rtf') || mimeType?.includes('rtf')) {
+        const rawText = buffer.toString('utf-8');
+        textContent = cleanRtf(rawText);
+      } else if (lowerName.endsWith('.txt') || lowerName.endsWith('.md') || mimeType?.startsWith('text/')) {
+        textContent = buffer.toString('utf-8');
+      }
+    }
+
+    // Validate that we have either inline media (PDF/image) or substantial text
+    if (!inlineMediaPart && (!textContent || textContent.length < 20)) {
+      return res.status(400).json({
+        error:
+          'Please upload a valid resume file (PDF, Word .docx/.doc, PNG/JPG scan, TXT, RTF) or paste at least a few sentences of resume text.',
+      });
     }
 
     const ai = getGenAI();
-    const prompt = `You are an expert resume parser and ATS migration engineer.
-Parse the following unstructured old resume text into cleanly formatted, modern ATS-compliant structured data.
-
-Old Resume Text:
-"""
-${oldResumeText.slice(0, 15000)}
-"""
+    const systemPrompt = `You are a World-Class Executive Resume Parser and ATS Migration Engineer.
+Extract all candidate information from the provided resume (document file or text) into cleanly formatted, modern, 100% ATS-compliant structured JSON.
 
 Instructions:
-1. Extract candidate's full legal name, target job title, email, phone, location, LinkedIn URL, GitHub URL, and personal website.
-2. Extract the professional summary (or synthesize a strong 3-4 sentence summary if only an objective or fragmented summary exists).
-3. Extract work experience entries with accurate job title, company name, location, dates (e.g. "Jan 2021", "Present"), current flag, and individual bullet points.
-4. Categorize all skills into logical groups (e.g. "Languages & Frameworks", "Cloud & DevOps", "Databases & Tools", "Methodologies").
-5. Extract education entries (degree, school, location, dates, GPA, honors).
-6. Extract key projects and certifications if present.
-Clean up any garbled characters or weird spacing from copy-pasting.`;
+1. Extract candidate's full legal name, target job title, email, phone, location (City, State/Country), LinkedIn URL, GitHub URL, and personal portfolio/website URL.
+2. Extract the professional summary (or synthesize a compelling, high-impact 3-4 sentence professional summary if only an objective or fragmented summary exists).
+3. Extract ALL work experience entries in chronological order. Include:
+   - Accurate job role/title
+   - Company name
+   - Location (City, State/Country or Remote)
+   - Start Date (e.g. "Jan 2021", "2019")
+   - End Date (e.g. "Present", "Dec 2023")
+   - Current role boolean flag
+   - Array of individual bullet points. Preserve quantitative metrics (percentages, dollar amounts, scale, team sizes), responsibilities, and achievements. Ensure each bullet begins with a strong past or present action verb.
+4. Categorize skills into logical groups (e.g., "Languages & Frameworks", "Cloud & Infrastructure", "Databases & Storage", "Tools & Methodologies", "Leadership & Operations").
+5. Extract education entries (degree, school/university, location, graduation/attendance dates, GPA if listed, honors/distinctions if listed).
+6. Extract key projects with name, role, link, tech stack, and impact bullet points.
+7. Extract relevant certifications (certification name, issuer, issue date, credential ID).
+
+Clean up any garbled OCR characters, weird line breaks, hyphenated line wraps, or formatting artifacts.`;
+
+    let contents: any;
+    if (inlineMediaPart) {
+      contents = [
+        inlineMediaPart,
+        {
+          text: `${systemPrompt}\n\nPlease parse this resume file carefully, including multi-column layouts, sidebars, headers, and bullet points.`,
+        },
+      ];
+    } else {
+      contents = `${systemPrompt}\n\nResume Document Text:\n"""\n${textContent.slice(0, 35000)}\n"""`;
+    }
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.8-flash',
-      contents: prompt,
+      contents,
       config: {
         responseMimeType: 'application/json',
         responseSchema: {

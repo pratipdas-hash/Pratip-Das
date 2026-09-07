@@ -298,21 +298,26 @@ export const ResumeFormEditor: React.FC<ResumeFormEditorProps> = ({
     <div className="space-y-4">
       {/* Quick Action: Import Old Resume */}
       {onOpenImportOldResume && (
-        <div className="p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-xl flex items-center justify-between gap-2">
+        <div className="p-2.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-purple-50/80 border border-blue-200/80 rounded-xl flex items-center justify-between gap-2 shadow-2xs">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
-              <History className="w-3.5 h-3.5" />
+            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+              <History className="w-4 h-4" />
             </div>
             <div>
-              <span className="font-semibold text-slate-800 text-[11px]">Have an existing resume?</span>
-              <p className="text-[10px] text-slate-500">Paste your past CV to auto-extract into this template</p>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-slate-800 text-[11px]">Have an existing resume?</span>
+                <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded border border-blue-200">
+                  PDF • Word • Images
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500">Upload your PDF, Word (.docx), or scan to auto-migrate into this template</p>
             </div>
           </div>
           <button
             onClick={onOpenImportOldResume}
-            className="px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 rounded-lg text-[11px] font-semibold transition-colors shadow-2xs whitespace-nowrap"
+            className="px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 rounded-lg text-[11px] font-semibold transition-colors shadow-2xs whitespace-nowrap cursor-pointer"
           >
-            Import Past Resume
+            Import Old Resume
           </button>
         </div>
       )}

@@ -367,11 +367,12 @@ export default function App() {
             {/* Import Past Resume */}
             <button
               onClick={() => setOldResumeImporterOpen(true)}
-              className="hidden lg:flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold transition-colors"
-              title="Import past resume to migrate into this template"
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+              title="Import past resume (PDF, Word, or text) to migrate into this template"
             >
-              <History className="w-3.5 h-3.5" />
-              <span>Import Old Resume</span>
+              <History className="w-3.5 h-3.5 text-blue-600" />
+              <span>Import Resume</span>
+              <span className="text-[10px] bg-blue-200/80 text-blue-800 font-bold px-1.5 py-0.2 rounded">PDF / Word</span>
             </button>
 
             {/* Saved Templates */}
