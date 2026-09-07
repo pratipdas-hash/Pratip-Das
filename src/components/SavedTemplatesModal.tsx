@@ -135,7 +135,10 @@ export const SavedTemplatesModal: React.FC<SavedTemplatesModalProps> = ({
                   title="Primary Color"
                 />
                 <span className="text-[11px] text-slate-500 font-mono">
-                  {currentSettings.fontFamily} • {currentSettings.headerStyle}
+                  {currentSettings.headingFontFamily && currentSettings.headingFontFamily !== currentSettings.fontFamily
+                    ? `${currentSettings.headingFontFamily} + ${currentSettings.fontFamily}`
+                    : currentSettings.fontFamily}{' '}
+                  • {currentSettings.headerStyle}
                 </span>
               </div>
             </div>
@@ -223,7 +226,10 @@ export const SavedTemplatesModal: React.FC<SavedTemplatesModalProps> = ({
                           style={{ backgroundColor: item.settings.primaryColor }}
                         />
                         <span className="text-[10px] text-slate-600 font-mono truncate">
-                          {item.settings.fontFamily} • {item.settings.headerStyle}
+                          {item.settings.headingFontFamily && item.settings.headingFontFamily !== item.settings.fontFamily
+                            ? `${item.settings.headingFontFamily} + ${item.settings.fontFamily}`
+                            : item.settings.fontFamily}{' '}
+                          • {item.settings.headerStyle}
                         </span>
                       </div>
 

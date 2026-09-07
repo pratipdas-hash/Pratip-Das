@@ -1,6 +1,13 @@
 import React from 'react';
 import { ResumeData, TemplateSettings, SectionId } from '../types';
 import { Mail, Phone, MapPin, Globe, Linkedin, Github, ExternalLink } from 'lucide-react';
+import {
+  getFontFamilyCss,
+  getHeadingTrackingStyle,
+  getHeadingWeightValue,
+  getHeadingScaleMultiplier,
+  getBodyFontWeightValue,
+} from '../data/typographyPresets';
 
 interface ResumePreviewProps {
   resume: ResumeData;
@@ -71,17 +78,30 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
   };
 
   const renderHeader = (title: string) => {
-    const uppercase = settings.uppercaseHeadings ? 'uppercase tracking-wider' : '';
+    const uppercase = settings.uppercaseHeadings ? 'uppercase' : '';
     const style = settings.headerStyle;
+
+    const headingFontFamily = settings.headingFontFamily || settings.fontFamily;
+    const headingScaleMult = getHeadingScaleMultiplier(settings.headingScale);
+    const headingFontSize = Math.round(settings.baseFontSize * headingScaleMult);
+    const headingWeight = getHeadingWeightValue(settings.headingWeight);
+    const headingTracking = getHeadingTrackingStyle(settings.headingTracking);
+    const headingFontCss = getFontFamilyCss(headingFontFamily);
+
+    const headingTextStyle: React.CSSProperties = {
+      color: settings.primaryColor,
+      fontFamily: headingFontCss,
+      fontWeight: headingWeight,
+      letterSpacing: headingTracking,
+      fontSize: `${headingFontSize}px`,
+      lineHeight: 1.25,
+    };
 
     switch (style) {
       case 'underline':
         return (
           <div className="border-b pb-1 mb-2.5 flex items-center justify-between" style={{ borderColor: settings.primaryColor }}>
-            <h2
-              className={`text-sm font-bold ${uppercase}`}
-              style={{ color: settings.primaryColor }}
-            >
+            <h2 className={`${uppercase}`} style={headingTextStyle}>
               {title}
             </h2>
           </div>
@@ -90,8 +110,13 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
         return (
           <div className="mb-2.5">
             <span
-              className={`inline-block px-3 py-0.5 rounded-full text-xs font-bold text-white ${uppercase}`}
-              style={{ backgroundColor: settings.primaryColor }}
+              className={`inline-block px-3 py-0.5 rounded-full text-white ${uppercase}`}
+              style={{
+                ...headingTextStyle,
+                backgroundColor: settings.primaryColor,
+                color: '#ffffff',
+                fontSize: `${Math.max(10, headingFontSize - 1.5)}px`,
+              }}
             >
               {title}
             </span>
@@ -100,10 +125,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
       case 'left-accent':
         return (
           <div className="mb-2.5 border-l-4 pl-2.5 py-0.5" style={{ borderColor: settings.primaryColor }}>
-            <h2
-              className={`text-sm font-bold ${uppercase}`}
-              style={{ color: settings.primaryColor }}
-            >
+            <h2 className={`${uppercase}`} style={headingTextStyle}>
               {title}
             </h2>
           </div>
@@ -112,12 +134,9 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
         return (
           <div
             className="px-2.5 py-1 rounded mb-2.5"
-            style={{ backgroundColor: `${settings.primaryColor}15` }}
+            style={{ backgroundColor: `${settings.primaryColor}18` }}
           >
-            <h2
-              className={`text-xs font-bold ${uppercase}`}
-              style={{ color: settings.primaryColor }}
-            >
+            <h2 className={`${uppercase}`} style={headingTextStyle}>
               {title}
             </h2>
           </div>
@@ -126,10 +145,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
       default:
         return (
           <div className="flex items-center gap-3 mb-2.5">
-            <h2
-              className={`text-sm font-bold shrink-0 ${uppercase}`}
-              style={{ color: settings.primaryColor }}
-            >
+            <h2 className={`shrink-0 ${uppercase}`} style={headingTextStyle}>
               {title}
             </h2>
             {settings.showDividers && (
@@ -347,9 +363,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
   return (
     <div
       id="resume-document"
-      className={`resume-sheet bg-white text-slate-800 transition-all mx-auto ${getFontFamilyClass(
-        settings.fontFamily
-      )}`}
+      className="resume-sheet bg-white text-slate-800 transition-all mx-auto"
       style={{
         padding: `${settings.pageMargin}mm`,
         fontSize: `${settings.baseFontSize}px`,
@@ -357,13 +371,22 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
         minHeight: isPrintMode ? 'auto' : minHeightStyle,
         color: settings.textColor,
         maxWidth: '850px',
+        fontFamily: getFontFamilyCss(settings.fontFamily),
+        fontWeight: getBodyFontWeightValue(settings.bodyFontWeight),
       }}
     >
       {/* Header / Personal Info */}
       <header className="border-b pb-3 mb-3 border-slate-200 text-center">
         <h1
-          className="text-2xl font-extrabold tracking-tight"
-          style={{ color: settings.primaryColor }}
+          className="tracking-tight"
+          style={{
+            color: settings.primaryColor,
+            fontFamily: getFontFamilyCss(settings.headingFontFamily || settings.fontFamily),
+            fontSize: `${settings.nameFontSize || 26}px`,
+            fontWeight: getHeadingWeightValue(settings.headingWeight) >= 700 ? 800 : 700,
+            letterSpacing: getHeadingTrackingStyle(settings.headingTracking),
+            lineHeight: 1.15,
+          }}
         >
           {personalInfo.fullName || 'Your Full Name'}
         </h1>

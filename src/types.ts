@@ -120,16 +120,37 @@ export type FontFamily =
   | 'Inter'
   | 'Plus Jakarta Sans'
   | 'Outfit'
+  | 'Roboto'
+  | 'Open Sans'
+  | 'Lato'
+  | 'Poppins'
   | 'Merriweather'
-  | 'JetBrains Mono';
+  | 'Lora'
+  | 'Playfair Display'
+  | 'EB Garamond'
+  | 'Libre Baskerville'
+  | 'Cinzel'
+  | 'JetBrains Mono'
+  | 'Fira Code';
 
 export type HeaderStyle = 'underline' | 'pill' | 'minimal-divider' | 'left-accent' | 'border-box' | 'subtle-fill';
 export type BulletStyle = 'disc' | 'hyphen' | 'square' | 'arrow';
 export type DateFormat = 'MMM YYYY' | 'YYYY' | 'MM/YYYY';
 
+export type HeadingWeight = 'medium' | 'semibold' | 'bold' | 'extrabold';
+export type HeadingTracking = 'tight' | 'normal' | 'wide' | 'wider';
+export type HeadingScale = 'compact' | 'balanced' | 'prominent';
+export type BodyFontWeight = 'light' | 'normal' | 'medium';
+
 export interface TemplateSettings {
   preset: TemplatePreset;
   fontFamily: FontFamily;
+  headingFontFamily?: FontFamily; // Optional distinct font for headings & candidate name
+  headingWeight?: HeadingWeight;
+  headingTracking?: HeadingTracking;
+  headingScale?: HeadingScale;
+  nameFontSize?: number; // e.g. 20 - 32px, default 24px
+  bodyFontWeight?: BodyFontWeight;
   baseFontSize: number; // e.g. 13px, 14px, 15px
   lineHeight: number; // e.g. 1.35, 1.45, 1.6
   pageMargin: number; // in mm, e.g. 12mm, 16mm, 20mm

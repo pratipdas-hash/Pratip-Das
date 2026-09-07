@@ -248,7 +248,11 @@ export const RoleTemplateSelector: React.FC<RoleTemplateSelectorProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-slate-200/70 text-[11px]">
           <div className="bg-white p-2 rounded-lg border border-slate-200">
             <span className="text-slate-400 text-[10px] block">Typography</span>
-            <span className="font-semibold text-slate-800">{activeConfig.settings.fontFamily}</span>
+            <span className="font-semibold text-slate-800 truncate block" title={activeConfig.settings.headingFontFamily ? `${activeConfig.settings.headingFontFamily} + ${activeConfig.settings.fontFamily}` : activeConfig.settings.fontFamily}>
+              {activeConfig.settings.headingFontFamily && activeConfig.settings.headingFontFamily !== activeConfig.settings.fontFamily
+                ? `${activeConfig.settings.headingFontFamily} + ${activeConfig.settings.fontFamily}`
+                : activeConfig.settings.fontFamily}
+            </span>
           </div>
 
           <div className="bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between">

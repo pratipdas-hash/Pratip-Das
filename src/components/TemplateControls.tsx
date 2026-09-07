@@ -1,7 +1,33 @@
 import React, { useState } from 'react';
-import { TemplateSettings, TemplatePreset, FontFamily, HeaderStyle, BulletStyle, RoleTemplateConfig } from '../types';
-import { Palette, Sliders, Layout, Type, ShieldCheck, Sparkles, RefreshCw, Briefcase, ChevronDown, ChevronUp, Wand2 } from 'lucide-react';
+import {
+  TemplateSettings,
+  TemplatePreset,
+  FontFamily,
+  HeaderStyle,
+  BulletStyle,
+  RoleTemplateConfig,
+  HeadingWeight,
+  HeadingTracking,
+  HeadingScale,
+} from '../types';
+import {
+  Palette,
+  Sliders,
+  Layout,
+  Type,
+  ShieldCheck,
+  Sparkles,
+  RefreshCw,
+  Briefcase,
+  ChevronDown,
+  ChevronUp,
+  Wand2,
+  ExternalLink,
+  Layers,
+} from 'lucide-react';
 import { RoleTemplateSelector } from './RoleTemplateSelector';
+import { TypographyStudioModal } from './TypographyStudioModal';
+import { FONT_CATALOG, CURATED_FONT_PAIRINGS } from '../data/typographyPresets';
 
 interface TemplateControlsProps {
   settings: TemplateSettings;
@@ -33,6 +59,7 @@ export const TemplateControls: React.FC<TemplateControlsProps> = ({
   onApplyRoleTemplate,
 }) => {
   const [showInlineRoleSelector, setShowInlineRoleSelector] = useState<boolean>(false);
+  const [showTypographyStudio, setShowTypographyStudio] = useState<boolean>(false);
 
   const applyPreset = (preset: TemplatePreset) => {
     let updated: Partial<TemplateSettings> = { preset };
@@ -257,34 +284,235 @@ export const TemplateControls: React.FC<TemplateControlsProps> = ({
 
       {/* Typography Controls */}
       <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 space-y-4">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-          <Type className="w-3.5 h-3.5 text-indigo-600" />
-          Typography & Sizing
-        </h4>
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+            <Type className="w-3.5 h-3.5 text-indigo-600" />
+            Typography & Hierarchy
+          </h4>
+          <button
+            onClick={() => setShowTypographyStudio(true)}
+            className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 transition-colors"
+            title="Browse all 15 ATS fonts, specimens, and curated pairings"
+          >
+            <Sparkles className="w-3 h-3 text-indigo-500" />
+            <span>Font Studio (15 Fonts)</span>
+          </button>
+        </div>
 
-        {/* Font Family */}
+        {/* Quick Curated Duo Chips */}
         <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1.5">
-            Font Family (ATS-Certified)
-          </label>
+          <div className="text-[10px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">
+            Quick Curated Duos
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {[
+              { name: 'Modern Tech', head: 'Plus Jakarta Sans', body: 'Inter' },
+              { name: 'Wall Street', head: 'Merriweather', body: 'Lato' },
+              { name: 'Executive Luxury', head: 'Playfair Display', body: 'Plus Jakarta Sans' },
+              { name: 'Universal ATS', head: 'Roboto', body: 'Roboto' },
+            ].map((duo) => {
+              const isActive =
+                settings.fontFamily === duo.body &&
+                (settings.headingFontFamily || settings.fontFamily) === duo.head;
+              return (
+                <button
+                  key={duo.name}
+                  onClick={() =>
+                    onChange({
+                      ...settings,
+                      fontFamily: duo.body as FontFamily,
+                      headingFontFamily: duo.head as FontFamily,
+                    })
+                  }
+                  className={`px-2 py-1.5 rounded-lg border text-left text-[11px] transition-colors ${
+                    isActive
+                      ? 'border-indigo-600 bg-indigo-50/70 text-indigo-900 font-semibold ring-1 ring-indigo-500/20'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="font-semibold text-xs truncate">{duo.name}</div>
+                  <div className="text-[10px] text-slate-500 truncate">
+                    {duo.head} + {duo.body}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Primary Body Font Family */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-medium text-slate-700">
+              Primary Body Font (100% ATS Safe)
+            </label>
+            <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+              ATS Verified
+            </span>
+          </div>
           <select
             value={settings.fontFamily}
             onChange={(e) => updateSetting('fontFamily', e.target.value as FontFamily)}
-            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="Inter">Inter (Clean Modern Sans)</option>
-            <option value="Plus Jakarta Sans">Plus Jakarta Sans (Crisp Tech)</option>
-            <option value="Outfit">Outfit (Contemporary Geometric)</option>
-            <option value="Merriweather">Merriweather (Classic Editorial Serif)</option>
-            <option value="JetBrains Mono">JetBrains Mono (Technical / Developer)</option>
+            <optgroup label="Modern Sans-Serif">
+              <option value="Inter">Inter (Clean Modern Sans)</option>
+              <option value="Plus Jakarta Sans">Plus Jakarta Sans (Crisp Tech & High Readability)</option>
+              <option value="Outfit">Outfit (Contemporary Geometric)</option>
+              <option value="Roboto">Roboto (Google / Enterprise ATS Neutral)</option>
+              <option value="Open Sans">Open Sans (Warm & Accessible)</option>
+              <option value="Lato">Lato (Balanced Corporate Sans)</option>
+              <option value="Poppins">Poppins (Modern Precision Geometric)</option>
+            </optgroup>
+            <optgroup label="Prestigious & Editorial Serifs">
+              <option value="Merriweather">Merriweather (Classic Editorial Serif)</option>
+              <option value="Lora">Lora (Contemporary Literary Serif)</option>
+              <option value="Playfair Display">Playfair Display (Executive Display Serif)</option>
+              <option value="EB Garamond">EB Garamond (Timeless Classical Judicial)</option>
+              <option value="Libre Baskerville">Libre Baskerville (Ivy League & Banking Print)</option>
+              <option value="Cinzel">Cinzel (Classical Roman Serif)</option>
+            </optgroup>
+            <optgroup label="Technical Monospaced">
+              <option value="JetBrains Mono">JetBrains Mono (Developer / Systems)</option>
+              <option value="Fira Code">Fira Code (Technical Code Monospace)</option>
+            </optgroup>
           </select>
         </div>
 
-        {/* Font Size & Line Height */}
+        {/* Dedicated Heading Font Pairing Toggle & Select */}
+        <div className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(settings.headingFontFamily && settings.headingFontFamily !== settings.fontFamily)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    updateSetting('headingFontFamily', settings.fontFamily === 'Inter' ? 'Plus Jakarta Sans' : 'Inter');
+                  } else {
+                    updateSetting('headingFontFamily', undefined);
+                  }
+                }}
+                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span>Pair Distinct Heading Font</span>
+            </label>
+            {settings.headingFontFamily && settings.headingFontFamily !== settings.fontFamily && (
+              <span className="text-[10px] text-indigo-600 font-medium">Active Pairing</span>
+            )}
+          </div>
+
+          {settings.headingFontFamily && settings.headingFontFamily !== settings.fontFamily && (
+            <div>
+              <label className="block text-[11px] text-slate-500 mb-1">
+                Heading Typeface (Candidate Name & Sections)
+              </label>
+              <select
+                value={settings.headingFontFamily}
+                onChange={(e) => updateSetting('headingFontFamily', e.target.value as FontFamily)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              >
+                <optgroup label="Modern Sans-Serif">
+                  <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
+                  <option value="Outfit">Outfit</option>
+                  <option value="Inter">Inter</option>
+                  <option value="Roboto">Roboto</option>
+                  <option value="Open Sans">Open Sans</option>
+                  <option value="Lato">Lato</option>
+                  <option value="Poppins">Poppins</option>
+                </optgroup>
+                <optgroup label="Prestigious Serifs">
+                  <option value="Playfair Display">Playfair Display (Executive Display)</option>
+                  <option value="Merriweather">Merriweather (Classic Editorial)</option>
+                  <option value="Lora">Lora (Contemporary Literary)</option>
+                  <option value="EB Garamond">EB Garamond (Judicial & Legal)</option>
+                  <option value="Libre Baskerville">Libre Baskerville (Banking)</option>
+                  <option value="Cinzel">Cinzel (Roman Inscription)</option>
+                </optgroup>
+                <optgroup label="Technical Monospaced">
+                  <option value="JetBrains Mono">JetBrains Mono</option>
+                  <option value="Fira Code">Fira Code</option>
+                </optgroup>
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* Candidate Name Size & Heading Scale */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <div className="flex justify-between text-xs text-slate-600 mb-1">
-              <span>Base Size</span>
+              <span>Name Size</span>
+              <span className="font-semibold">{settings.nameFontSize || 26}px</span>
+            </div>
+            <input
+              type="range"
+              min="20"
+              max="34"
+              step="1"
+              value={settings.nameFontSize || 26}
+              onChange={(e) => updateSetting('nameFontSize', parseInt(e.target.value))}
+              className="w-full accent-indigo-600 cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between text-xs text-slate-600 mb-1">
+              <span>Heading Scale</span>
+              <span className="font-semibold capitalize">{settings.headingScale || 'balanced'}</span>
+            </div>
+            <select
+              value={settings.headingScale || 'balanced'}
+              onChange={(e) => updateSetting('headingScale', e.target.value as HeadingScale)}
+              className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-800"
+            >
+              <option value="compact">Compact (1.12x)</option>
+              <option value="balanced">Balanced (1.22x)</option>
+              <option value="prominent">Prominent (1.35x)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Heading Weight & Tracking */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">
+              Heading Weight
+            </label>
+            <select
+              value={settings.headingWeight || 'bold'}
+              onChange={(e) => updateSetting('headingWeight', e.target.value as HeadingWeight)}
+              className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-800"
+            >
+              <option value="medium">Medium (500)</option>
+              <option value="semibold">Semi-Bold (600)</option>
+              <option value="bold">Bold (700)</option>
+              <option value="extrabold">Extra Bold (800)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">
+              Heading Tracking
+            </label>
+            <select
+              value={settings.headingTracking || 'normal'}
+              onChange={(e) => updateSetting('headingTracking', e.target.value as HeadingTracking)}
+              className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-800"
+            >
+              <option value="tight">Tight</option>
+              <option value="normal">Normal</option>
+              <option value="wide">Wide</option>
+              <option value="wider">Expanded</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Font Size & Line Height */}
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+          <div>
+            <div className="flex justify-between text-xs text-slate-600 mb-1">
+              <span>Base Body Size</span>
               <span className="font-semibold">{settings.baseFontSize}px</span>
             </div>
             <input
@@ -499,6 +727,14 @@ export const TemplateControls: React.FC<TemplateControlsProps> = ({
           </label>
         </div>
       </div>
+
+      {/* Full-Screen Typography & Font Studio Modal */}
+      <TypographyStudioModal
+        isOpen={showTypographyStudio}
+        onClose={() => setShowTypographyStudio(false)}
+        settings={settings}
+        onChange={onChange}
+      />
     </div>
   );
 };
