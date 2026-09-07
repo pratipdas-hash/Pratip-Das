@@ -155,8 +155,8 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
 
       setSelectedFile(fileInfo);
 
-      // If it's a Word document, attempt fast text extraction for user preview
-      if (formatType === 'docx' || formatType === 'doc') {
+      // For PDF and Word documents, extract text immediately for preview & high-accuracy parsing
+      if (formatType === 'docx' || formatType === 'doc' || formatType === 'pdf') {
         setExtractingText(true);
         try {
           const res = await fetch('/api/ai/extract-file-text', {
@@ -164,7 +164,7 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               fileBase64: base64Data,
-              mimeType: file.type,
+              mimeType: file.type || (formatType === 'pdf' ? 'application/pdf' : undefined),
               fileName: file.name,
             }),
           });
@@ -542,7 +542,7 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
                     <FileType className="w-4 h-4 text-blue-500 shrink-0" />
                     <span>
                       {selectedFile.formatType === 'pdf'
-                        ? 'Gemini Multimodal AI will inspect visual hierarchy, sidebars, multi-column blocks, and dates directly from this PDF.'
+                        ? 'High-precision PDF parsing active. AI extracts text, roles, skills, metrics, and multi-column hierarchy.'
                         : 'Word document extracted. All headings, bullet lists, dates, and experience blocks are primed for migration.'}
                     </span>
                   </div>
@@ -752,7 +752,7 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
         {/* Footer */}
         <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
           <span className="text-slate-500">
-            Supports PDF, Word (.docx/.doc), Scanned images (PNG/JPG), and TXT/Markdown. All data is editable after import.
+            Supports PDF (.pdf) and Word (.docx, .doc) resumes. All parsed data is fully editable after import.
           </span>
           <button
             onClick={onClose}

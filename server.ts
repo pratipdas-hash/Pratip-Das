@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import mammoth from 'mammoth';
+import { PDFParse } from 'pdf-parse';
 
 dotenv.config();
 
@@ -307,6 +308,64 @@ function extractPrintableFromDoc(buffer: Buffer): string {
     .join('\n');
 }
 
+// Helper to extract text from PDF buffer using PDFParse
+async function extractTextFromPdfBuffer(buffer: Buffer): Promise<string> {
+  try {
+    const parser = new PDFParse({ data: buffer });
+    const resObj = await parser.getText();
+    const text = (resObj?.text || '').trim();
+    await parser.destroy();
+    return text;
+  } catch (err) {
+    console.warn('extractTextFromPdfBuffer error:', err);
+    return '';
+  }
+}
+
+// Helper to safely extract JSON from AI response even with preamble, markdown fences, or comments
+function extractJsonFromText(rawText: string): any {
+  if (!rawText || !rawText.trim()) {
+    throw new Error('AI returned an empty response.');
+  }
+
+  const text = rawText.trim();
+
+  // 1. Direct parse attempt
+  try {
+    return JSON.parse(text);
+  } catch {}
+
+  // 2. Strip markdown code fences ```json ... ``` or ``` ... ```
+  const markdownMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (markdownMatch && markdownMatch[1]) {
+    try {
+      return JSON.parse(markdownMatch[1].trim());
+    } catch {}
+  }
+
+  // 3. Extract substring between first '{' and last '}'
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    const candidate = text.slice(firstBrace, lastBrace + 1);
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      try {
+        // Clean trailing commas and comments
+        const cleaned = candidate
+          .replace(/,\s*([}\]])/g, '$1')
+          .replace(/\/\*[\s\S]*?\*\/|([^:]|^)\/\/.*$/gm, '$1');
+        return JSON.parse(cleaned);
+      } catch {}
+    }
+  }
+
+  // 4. Fallback sanitized error
+  const preview = text.length > 80 ? text.slice(0, 80) + '...' : text;
+  throw new Error(`Failed to parse AI output as JSON: ${preview}`);
+}
+
 // Endpoint to quickly extract text from uploaded files (PDF, Word DOCX/DOC)
 app.post('/api/ai/extract-file-text', async (req, res) => {
   try {
@@ -334,6 +393,7 @@ app.post('/api/ai/extract-file-text', async (req, res) => {
           format: 'docx',
           fileName,
           isBinaryDocument: false,
+          wordCount: (docxText || '').split(/\s+/).filter(Boolean).length,
         });
       } catch (err: any) {
         console.warn('Mammoth docx extraction error:', err);
@@ -350,6 +410,7 @@ app.post('/api/ai/extract-file-text', async (req, res) => {
             format: 'doc',
             fileName,
             isBinaryDocument: false,
+            wordCount: docText.split(/\s+/).filter(Boolean).length,
           });
         }
       } catch {
@@ -360,18 +421,24 @@ app.post('/api/ai/extract-file-text', async (req, res) => {
           format: 'doc',
           fileName,
           isBinaryDocument: false,
+          wordCount: extracted.split(/\s+/).filter(Boolean).length,
         });
       }
     }
 
     // 3. PDF
     if (lowerName.endsWith('.pdf') || mimeType === 'application/pdf') {
+      const pdfText = await extractTextFromPdfBuffer(buffer);
+      const wordCount = pdfText ? pdfText.split(/\s+/).filter(Boolean).length : 0;
       return res.json({
-        text: '',
+        text: pdfText,
         format: 'pdf',
         fileName,
         isBinaryDocument: true,
-        message: 'PDF document loaded. Gemini multimodal engine will parse visual hierarchy, columns, and text directly.',
+        wordCount,
+        message: wordCount > 0
+          ? `PDF parsed successfully (${wordCount} words extracted).`
+          : 'PDF document loaded. Gemini multimodal engine will inspect visual layout and text directly.',
       });
     }
 
@@ -439,7 +506,13 @@ app.post('/api/ai/parse-old-resume', async (req, res) => {
           textContent = extractPrintableFromDoc(buffer);
         }
       } else if (isPdf) {
-        // PDF document: Pass directly to Gemini multimodal via inlineData!
+        // Extract text directly from PDF buffer first (instant, high accuracy)
+        const pdfText = await extractTextFromPdfBuffer(buffer);
+        if (pdfText && pdfText.length >= 25) {
+          textContent = pdfText;
+        }
+
+        // Also prepare inlineMediaPart for direct multimodal analysis if needed
         inlineMediaPart = {
           inlineData: {
             mimeType: 'application/pdf',
@@ -449,7 +522,7 @@ app.post('/api/ai/parse-old-resume', async (req, res) => {
       }
     }
 
-    // Validate that we have either inline media (PDF) or substantial Word text
+    // Validate that we have either extracted text or inline media (PDF)
     if (!inlineMediaPart && (!textContent || textContent.length < 20)) {
       return res.status(400).json({
         error:
@@ -480,15 +553,20 @@ Instructions:
 Clean up any garbled OCR characters, weird line breaks, hyphenated line wraps, or formatting artifacts.`;
 
     let contents: any;
-    if (inlineMediaPart) {
-      contents = [
-        inlineMediaPart,
-        {
-          text: `${systemPrompt}\n\nPlease parse this resume file carefully, including multi-column layouts, sidebars, headers, and bullet points.`,
-        },
-      ];
+    if (textContent && textContent.length >= 25) {
+      // If we have clean text extracted from PDF or Word, text-based generation is most reliable
+      contents = `${systemPrompt}\n\nResume Document Content:\n"""\n${textContent.slice(0, 40000)}\n"""\n\nCRITICAL REQUIREMENT: Output strictly a single raw valid JSON object matching the requested schema. Do NOT wrap in markdown fences (\`\`\`json), and do NOT output any conversational text, preamble, or notes (such as "The page contains..."). Output ONLY the JSON object.`;
+    } else if (inlineMediaPart) {
+      contents = {
+        parts: [
+          inlineMediaPart,
+          {
+            text: `${systemPrompt}\n\nPlease parse this resume file carefully. CRITICAL REQUIREMENT: Output strictly a single raw valid JSON object matching the requested schema. Do NOT output any conversational text, preamble, or notes (such as "The page contains..."). Output ONLY the JSON object.`,
+          },
+        ],
+      };
     } else {
-      contents = `${systemPrompt}\n\nResume Document Text:\n"""\n${textContent.slice(0, 35000)}\n"""`;
+      contents = `${systemPrompt}\n\nResume Document Content:\n"""\n${textContent.slice(0, 35000)}\n"""\n\nCRITICAL REQUIREMENT: Output strictly a single raw valid JSON object matching the requested schema.`;
     }
 
     const response = await ai.models.generateContent({
@@ -601,7 +679,7 @@ Clean up any garbled OCR characters, weird line breaks, hyphenated line wraps, o
       },
     });
 
-    const parsed = JSON.parse(response.text || '{}');
+    const parsed = extractJsonFromText(response.text || '');
     return res.json(parsed);
   } catch (error: any) {
     console.error('Error in /api/ai/parse-old-resume:', error);
