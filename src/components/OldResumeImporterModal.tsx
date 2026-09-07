@@ -653,9 +653,16 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
           )}
 
           {error && (
-            <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2.5">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-              <span>{error}</span>
+            <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs space-y-1">
+              <div className="flex items-center gap-2 font-medium">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                <span>{error}</span>
+              </div>
+              {error.includes('GEMINI_API_KEY') && (
+                <p className="text-[11px] text-red-600 pl-6">
+                  Open the <strong>Settings</strong> menu in AI Studio to add your Gemini API Key.
+                </p>
+              )}
             </div>
           )}
 
