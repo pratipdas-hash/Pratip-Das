@@ -259,7 +259,13 @@ function fallbackGenerateSummary(resumeData: any, jobDescription?: string, tone 
   const expYears = expCount > 2 ? '5+' : '3+';
 
   let summary = '';
-  if (tone === 'executive') {
+  if (tone === 'assertive') {
+    summary = `Commanding ${title} with ${expYears} years of decisive leadership and proactive execution across mission-critical operations. Proven track record of taking end-to-end ownership, dismantling organizational bottlenecks, and driving aggressive business targets. Core expertise spans ${skillsList || 'authoritative leadership, strategic execution, and high-impact delivery'}.`;
+  } else if (tone === 'academic') {
+    summary = `Methodical ${title} with ${expYears} years of analytical research, empirical investigation, and structured problem-solving. Specialized in applying rigorous frameworks, quantitative modeling, and data-backed methodologies to complex systems. Core competencies include ${skillsList || 'advanced research, methodological design, and intellectual rigor'}.`;
+  } else if (tone === 'creative') {
+    summary = `Visionary ${title} with ${expYears} years of experience conceptualizing innovative products, reimagining workflows, and pioneering user-centric paradigms. Adept at blending creative thinking with scalable technical craftsmanship in ${skillsList || 'novel architectures, rapid prototyping, and design-led engineering'}.`;
+  } else if (tone === 'executive') {
     summary = `Results-driven ${title} with ${expYears} years of progressive leadership and strategic delivery across cross-functional operations. Recognized for architecting scalable initiatives, cultivating high-velocity teams, and aligning technological capabilities with business milestones. Proven track record in ${skillsList || 'operational excellence, process optimization, and value creation'}.`;
   } else if (tone === 'metric-focused') {
     summary = `Metrics-oriented ${title} with over ${expYears} years of hands-on experience optimizing mission-critical workflows and scaling performance benchmarks. Spearheaded key initiatives improving throughput by 30%+ and delivering high-impact deliverables on schedule. Core expertise spans ${skillsList || 'cross-functional collaboration, technical execution, and metrics-driven iteration'}.`;
@@ -276,32 +282,81 @@ function fallbackGenerateSummary(resumeData: any, jobDescription?: string, tone 
   return {
     summary,
     keyMatches,
-    atsTip: 'Tailored summary structured without first-person pronouns and optimized for high keyword density in top applicant screening filters.',
+    atsTip: `Tailored summary crafted in an '${tone}' tone without first-person pronouns and optimized for high keyword density in ATS screening filters.`,
   };
 }
 
 function fallbackEnhanceBullet(bullet: string, targetRole?: string, tone = 'impactful'): any {
   const clean = bullet.replace(/^[•\-*]\s*/, '').trim();
-  const role = targetRole || 'core initiatives';
+  const cleanedText = clean.toLowerCase().replace(/^(responsible for|helped to|worked on|involved in|assisted with|handled)\s*/i, '');
 
-  let enhanced = `Spearheaded ${clean.toLowerCase().replace(/^(responsible for|helped to|worked on)\s*/i, '')}, improving operational throughput by 28% and elevating team deliverables.`;
-  
-  if (tone === 'metric-focused') {
-    enhanced = `Overhauled and executed ${clean.toLowerCase().replace(/^(responsible for|helped to|worked on)\s*/i, '')}, realizing a 35% efficiency boost and saving 12+ weekly engineering hours.`;
-  } else if (tone === 'executive') {
-    enhanced = `Orchestrated ${clean.toLowerCase().replace(/^(responsible for|helped to|worked on)\s*/i, '')}, championing organizational alignment and scaling capacity across 3 departments.`;
-  } else if (tone === 'concise') {
-    enhanced = `Engineered and deployed ${clean.toLowerCase().replace(/^(responsible for|helped to|worked on)\s*/i, '')}, driving measurable gains in system reliability.`;
+  let enhanced = `Spearheaded ${cleanedText}, improving operational throughput by 28% and elevating team deliverables.`;
+  let variations: string[] = [];
+
+  switch (tone) {
+    case 'assertive':
+      enhanced = `Championed and drove ${cleanedText}, taking end-to-end ownership to surpass operational performance targets by 32%.`;
+      variations = [
+        `Commanded cross-functional initiatives for ${cleanedText}, delivering decisive operational gains within 90 days.`,
+        `Mobilized core teams to execute ${cleanedText}, eliminating critical delivery bottlenecks by 40%.`,
+        `Pioneered organizational accountability across ${cleanedText}, establishing gold-standard execution benchmarks.`,
+      ];
+      break;
+    case 'academic':
+      enhanced = `Formulated and empirically evaluated ${cleanedText}, applying rigorous methodological frameworks to achieve statistically significant outcome gains.`;
+      variations = [
+        `Synthesized empirical research to design and implement ${cleanedText}, advancing institutional standards and domain efficacy.`,
+        `Conducted structured quantitative evaluations of ${cleanedText}, publishing methodological guidelines adopted across workflows.`,
+        `Engineered a reproducible analysis pipeline for ${cleanedText}, optimizing diagnostic precision by 27%.`,
+      ];
+      break;
+    case 'creative':
+      enhanced = `Reimagined and launched ${cleanedText}, transforming user workflows and unlocking novel cross-platform capabilities.`;
+      variations = [
+        `Pioneered a forward-thinking paradigm for ${cleanedText}, fusing human-centric design with scalable technical execution.`,
+        `Conceptualized and rolled out innovative solutions for ${cleanedText}, elevating stakeholder satisfaction by 45%.`,
+        `Spearheaded out-of-the-box prototyping for ${cleanedText}, accelerating discovery-to-deployment velocity by 2x.`,
+      ];
+      break;
+    case 'metric-focused':
+      enhanced = `Overhauled and executed ${cleanedText}, realizing a 35% efficiency boost and saving 12+ weekly engineering hours ($45K annualized).`;
+      variations = [
+        `Quantified and accelerated ${cleanedText}, driving 42% faster cycle times and scaling request capacity by 3x.`,
+        `Cut operational latency by 38% across ${cleanedText}, increasing quarterly uptime from 99.2% to 99.99%.`,
+        `Delivered $180K in measurable infrastructure cost savings by optimizing ${cleanedText} across production systems.`,
+      ];
+      break;
+    case 'concise':
+      enhanced = `Engineered and deployed ${cleanedText}, driving a 25% lift in system reliability.`;
+      variations = [
+        `Directed ${cleanedText}, accelerating delivery cycle times by 30%.`,
+        `Deployed ${cleanedText}, cutting error rates by 22% across primary services.`,
+        `Streamlined ${cleanedText}, reducing weekly operational overhead by 15 hours.`,
+      ];
+      break;
+    case 'executive':
+      enhanced = `Orchestrated ${cleanedText}, championing organizational alignment and scaling capacity across 3 key business units.`;
+      variations = [
+        `Steered strategic roadmap and resource allocation for ${cleanedText}, capturing $500K+ in enterprise value.`,
+        `Governed cross-departmental delivery for ${cleanedText}, aligning executive priorities with high-velocity product execution.`,
+        `Forged executive consensus to overhaul ${cleanedText}, elevating organizational maturity benchmarks across teams.`,
+      ];
+      break;
+    case 'impactful':
+    default:
+      enhanced = `Spearheaded ${cleanedText}, improving operational throughput by 28% and elevating team deliverables.`;
+      variations = [
+        `Accelerated delivery of ${cleanedText} by 30% through automated workflows and rigorous process improvements.`,
+        `Partnered with cross-functional stakeholders to pioneer ${cleanedText}, reducing turnaround cycles by 25%.`,
+        `Directed the end-to-end execution of ${cleanedText}, optimizing resource utilization across key deliverables.`,
+      ];
+      break;
   }
 
   return {
     enhanced,
-    variations: [
-      `Accelerated delivery of ${clean.toLowerCase()} by 30% through automated workflows and rigorous process improvements.`,
-      `Partnered with cross-functional stakeholders to pioneer ${clean.toLowerCase()}, reducing turnaround cycles by 25%.`,
-      `Directed the end-to-end execution of ${clean.toLowerCase()}, optimizing resource utilization across key deliverables.`,
-    ],
-    improvementsMade: 'Replaced passive phrasing with strong action verbs (Google XYZ structure) and embedded quantifiable performance metrics.',
+    variations,
+    improvementsMade: `Enhanced using the Google XYZ format with a customized '${tone}' voice profile and quantifiable ATS keywords.`,
   };
 }
 
@@ -416,19 +471,28 @@ app.post('/api/ai/enhance-bullet', async (req, res) => {
     const prompt = `You are an expert ATS Resume Coach and Technical Recruiter.
 Enhance the following resume bullet point using the Google XYZ Formula: "Accomplished [X] as measured by [Y] by doing [Z]".
 Guidelines:
-- Start with a strong action verb (e.g., Spearheaded, Engineered, Accelerated, Overhauled).
+- Start with a strong action verb matching the requested tone.
 - Include realistic quantifiable metrics and business impact placeholders if none exist (e.g., reduced latency by 35%, grew revenue by $250K).
-- Eliminate weak filler words (helped, responsible for, worked on).
+- Eliminate weak filler words (helped, responsible for, worked on, assisted).
 - Ensure high ATS keyword friendliness for: ${targetRole || 'Professional Role'}.
 ${jobDescription ? `Incorporate relevant keywords from this Job Description if fitting:\n${jobDescription.slice(0, 1000)}` : ''}
-Tone requested: ${tone} (Options: impactful, metric-focused, concise, executive).
+
+Tone requested: "${tone}"
+Adhere strictly to this voice:
+- "assertive": Direct, authoritative, decisive, high-ownership language (e.g., Commanded, Drove, Championed, Mobilized) demonstrating proactive leadership and accountability.
+- "academic": Methodical, research-oriented, analytical rigor (e.g., Formulated, Synthesized, Empirically evaluated, Conceptualized) highlighting structured investigation and scholarly depth.
+- "creative": Visionary, innovative, design-thinking vocabulary (e.g., Reimagined, Pioneered, Conceptualized, Revolutionized) reflecting modern and out-of-the-box approaches.
+- "impactful": High-energy action verbs focused on business results and the Google XYZ framework.
+- "metric-focused": Heavy on percentages, throughput, dollars, and quantifiable metrics.
+- "concise": Crisp, punchy, compact sentence structure with zero fluff.
+- "executive": Strategic alignment, organizational impact, governance, and cross-departmental leadership.
 
 Original bullet: "${bullet}"
 
 Provide:
-1. "enhanced": The single best rewritten bullet point.
-2. "variations": 3 alternative versions (e.g. one concise, one heavily metric-driven, one leadership-oriented).
-3. "improvementsMade": Brief note explaining why this ranks higher on ATS and recruiter screens.`;
+1. "enhanced": The single best rewritten bullet point matching the "${tone}" voice profile.
+2. "variations": 3 alternative versions exploring nuances of this tone.
+3. "improvementsMade": Brief note explaining how this tone and structure boosts ATS ranking and recruiter appeal.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.8-flash',

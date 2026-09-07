@@ -2,6 +2,67 @@ import React, { useState } from 'react';
 import { Sparkles, X, Check, RefreshCw, ArrowRight, Wand2, Lightbulb } from 'lucide-react';
 import { ResumeData } from '../types';
 
+export type BulletTone =
+  | 'assertive'
+  | 'academic'
+  | 'creative'
+  | 'impactful'
+  | 'metric-focused'
+  | 'concise'
+  | 'executive';
+
+interface ToneOption {
+  id: BulletTone;
+  label: string;
+  badge: string;
+  description: string;
+}
+
+const TONE_OPTIONS: ToneOption[] = [
+  {
+    id: 'assertive',
+    label: 'Assertive',
+    badge: 'Authoritative & Decisive',
+    description: 'High-ownership, commanding verbs highlighting proactive leadership and accountability.',
+  },
+  {
+    id: 'academic',
+    label: 'Academic',
+    badge: 'Methodical & Scholarly',
+    description: 'Analytical rigor, theoretical grounding, empirical evidence, and structured methodology.',
+  },
+  {
+    id: 'creative',
+    label: 'Creative',
+    badge: 'Innovative & Visionary',
+    description: 'Dynamic phrasing, novel frameworks, design thinking, and forward-looking problem solving.',
+  },
+  {
+    id: 'impactful',
+    label: 'Impactful',
+    badge: 'Results-Oriented (Google XYZ)',
+    description: 'High-energy verbs paired with tangible achievements and clear business outcomes.',
+  },
+  {
+    id: 'metric-focused',
+    label: 'Metric-Focused',
+    badge: 'Data-Driven & Quantifiable',
+    description: 'Heavy emphasis on quantifiable measurements, percentage lifts, revenue figures, and throughput.',
+  },
+  {
+    id: 'concise',
+    label: 'Concise',
+    badge: 'Lean & Crisp',
+    description: 'Compact, high-density phrasing stripped of filler words to maximize recruiter scanning speed.',
+  },
+  {
+    id: 'executive',
+    label: 'Executive',
+    badge: 'Strategic & Governance',
+    description: 'Enterprise leadership, organizational impact, cross-functional vision, and stakeholder alignment.',
+  },
+];
+
 interface AiAssistantModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -24,7 +85,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({
   onApply,
 }) => {
   const [inputText, setInputText] = useState(initialText);
-  const [tone, setTone] = useState<'impactful' | 'metric-focused' | 'concise' | 'executive'>('impactful');
+  const [tone, setTone] = useState<BulletTone>('assertive');
   const [loading, setLoading] = useState(false);
   const [enhancedResult, setEnhancedResult] = useState<string>('');
   const [variations, setVariations] = useState<string[]>([]);
@@ -40,6 +101,8 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({
   }, [initialText, isOpen]);
 
   if (!isOpen) return null;
+
+  const currentToneConfig = TONE_OPTIONS.find((t) => t.id === tone) || TONE_OPTIONS[0];
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -100,7 +163,7 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({
               </h3>
               <p className="text-[11px] text-slate-500">
                 {mode === 'bullet'
-                  ? 'Turns passive descriptions into quantifiable achievements with strong action verbs.'
+                  ? 'Turns passive descriptions into quantifiable achievements with customized tone and action verbs.'
                   : 'Tailors your summary with top ATS keywords from the job description.'}
               </p>
             </div>
@@ -115,28 +178,39 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
-          {/* Tone Selector */}
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">Optimization Tone & Focus:</label>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { id: 'impactful', label: 'Impactful' },
-                { id: 'metric-focused', label: 'Metric Heavy' },
-                { id: 'concise', label: 'Concise' },
-                { id: 'executive', label: 'Executive' },
-              ].map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTone(t.id as any)}
-                  className={`py-1.5 px-2 rounded-lg border text-center font-medium transition-all ${
-                    tone === t.id
-                      ? 'border-indigo-600 bg-indigo-50 text-indigo-900 font-semibold'
-                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                  }`}
+          {/* Tone Selector Dropdown */}
+          <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <label htmlFor="tone-select" className="block font-semibold text-slate-800 text-xs">
+                  Tone & Voice:
+                </label>
+                <p className="text-[11px] text-slate-500">
+                  Select the rhetorical voice to guide vocabulary, ownership, and framing.
+                </p>
+              </div>
+              <div className="relative min-w-[220px]">
+                <select
+                  id="tone-select"
+                  value={tone}
+                  onChange={(e) => setTone(e.target.value as BulletTone)}
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
                 >
-                  {t.label}
-                </button>
-              ))}
+                  {TONE_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label} — {opt.badge}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Selected Tone Preview Helper */}
+            <div className="flex items-center gap-2 pt-1 text-[11px] text-indigo-900 bg-indigo-50/70 px-2.5 py-1.5 rounded-lg border border-indigo-100/80">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span>
+                <strong className="font-semibold">{currentToneConfig.label}:</strong> {currentToneConfig.description}
+              </span>
             </div>
           </div>
 
