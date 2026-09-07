@@ -1,0 +1,6 @@
+{
+  "name": "ATS Resume Builder & AI Optimizer",
+  "description": "Real-time ATS resume builder and optimizer with job description matching, AI-powered keyword and bullet enhancement, custom drag-and-drop template designer, and PDF export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
