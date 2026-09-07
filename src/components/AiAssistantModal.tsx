@@ -187,8 +187,13 @@ export const AiAssistantModal: React.FC<AiAssistantModalProps> = ({
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs">
-              {error}
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs space-y-1">
+              <div className="font-medium">{error}</div>
+              {error.includes('GEMINI_API_KEY') && (
+                <div className="text-[11px] text-red-600">
+                  Tip: Open the <strong>Settings</strong> menu in AI Studio to configure your Gemini API Key.
+                </div>
+              )}
             </div>
           )}
 
