@@ -307,10 +307,10 @@ export const ResumeFormEditor: React.FC<ResumeFormEditorProps> = ({
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-slate-800 text-[11px]">Have an existing resume?</span>
                 <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded border border-blue-200">
-                  PDF • Word • Images
+                  PDF • Word Only
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500">Upload your PDF, Word (.docx), or scan to auto-migrate into this template</p>
+              <p className="text-[10px] text-slate-500">Upload your PDF or Word (.docx, .doc) resume to auto-migrate into this template</p>
             </div>
           </div>
           <button

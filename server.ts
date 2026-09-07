@@ -307,7 +307,7 @@ function extractPrintableFromDoc(buffer: Buffer): string {
     .join('\n');
 }
 
-// Endpoint to quickly extract text from uploaded files (DOCX, DOC, RTF, TXT, MD)
+// Endpoint to quickly extract text from uploaded files (PDF, Word DOCX/DOC)
 app.post('/api/ai/extract-file-text', async (req, res) => {
   try {
     const { fileBase64, mimeType, fileName } = req.body;
@@ -317,6 +317,13 @@ app.post('/api/ai/extract-file-text', async (req, res) => {
 
     const lowerName = (fileName || '').toLowerCase();
     const buffer = Buffer.from(fileBase64, 'base64');
+
+    // Reject JSON explicitly
+    if (lowerName.endsWith('.json') || mimeType === 'application/json' || mimeType?.includes('json')) {
+      return res.status(400).json({
+        error: 'JSON files are not supported. Please upload your resume in PDF (.pdf) or Word (.docx, .doc) format only.',
+      });
+    }
 
     // 1. DOCX
     if (lowerName.endsWith('.docx') || mimeType?.includes('wordprocessingml')) {
@@ -357,42 +364,19 @@ app.post('/api/ai/extract-file-text', async (req, res) => {
       }
     }
 
-    // 3. Plain Text / Markdown / RTF
-    if (lowerName.endsWith('.txt') || lowerName.endsWith('.md') || mimeType?.startsWith('text/plain') || mimeType?.startsWith('text/markdown')) {
-      const text = buffer.toString('utf-8');
+    // 3. PDF
+    if (lowerName.endsWith('.pdf') || mimeType === 'application/pdf') {
       return res.json({
-        text,
-        format: 'text',
+        text: '',
+        format: 'pdf',
         fileName,
-        isBinaryDocument: false,
+        isBinaryDocument: true,
+        message: 'PDF document loaded. Gemini multimodal engine will parse visual hierarchy, columns, and text directly.',
       });
     }
 
-    if (lowerName.endsWith('.rtf') || mimeType?.includes('rtf')) {
-      const rawText = buffer.toString('utf-8');
-      const text = cleanRtf(rawText);
-      return res.json({
-        text,
-        format: 'rtf',
-        fileName,
-        isBinaryDocument: false,
-      });
-    }
-
-    // 4. PDF or Image
-    const isPdf = lowerName.endsWith('.pdf') || mimeType === 'application/pdf';
-    const isImage = /\.(png|jpe?g|webp)$/i.test(lowerName) || mimeType?.startsWith('image/');
-
-    return res.json({
-      text: '',
-      format: isPdf ? 'pdf' : isImage ? 'image' : 'binary',
-      fileName,
-      isBinaryDocument: true,
-      message: isPdf
-        ? 'PDF document loaded. Gemini multimodal engine will parse visual hierarchy, columns, and text directly.'
-        : isImage
-        ? 'Resume image loaded. Gemini multimodal vision will scan and extract all text and layout.'
-        : 'File loaded for direct AI parsing.',
+    return res.status(400).json({
+      error: 'Unsupported file format. Please upload your resume in PDF (.pdf) or Word (.docx, .doc) format only.',
     });
   } catch (error: any) {
     console.error('Error in /api/ai/extract-file-text:', error);
@@ -400,7 +384,7 @@ app.post('/api/ai/extract-file-text', async (req, res) => {
   }
 });
 
-// 5. AI Parse Old Resume & Migrate Into New Template (Supports PDF, Word DOCX/DOC, Images, RTF, TXT, Raw Text)
+// 5. AI Parse Old Resume & Migrate Into New Template (Accepts PDF or Word DOCX/DOC formats only)
 app.post('/api/ai/parse-old-resume', async (req, res) => {
   try {
     const { oldResumeText, fileBase64, mimeType, fileName } = req.body;
@@ -409,8 +393,28 @@ app.post('/api/ai/parse-old-resume', async (req, res) => {
     let inlineMediaPart: { inlineData: { mimeType: string; data: string } } | null = null;
     const lowerName = (fileName || '').toLowerCase();
 
-    // Process file if provided
+    // Reject JSON files explicitly
+    if (lowerName.endsWith('.json') || mimeType === 'application/json' || mimeType?.includes('json')) {
+      return res.status(400).json({
+        error: 'JSON files are not supported. Please upload your resume in PDF (.pdf) or Word (.docx, .doc) format only.',
+      });
+    }
+
+    // Process file if provided - strictly PDF or Word
     if (fileBase64 && typeof fileBase64 === 'string') {
+      const isPdf = lowerName.endsWith('.pdf') || mimeType === 'application/pdf';
+      const isWord =
+        lowerName.endsWith('.docx') ||
+        lowerName.endsWith('.doc') ||
+        mimeType?.includes('wordprocessingml') ||
+        mimeType?.includes('msword');
+
+      if (!isPdf && !isWord) {
+        return res.status(400).json({
+          error: 'Only PDF (.pdf) and Word (.docx, .doc) documents are supported. Please upload a PDF or Word file.',
+        });
+      }
+
       const buffer = Buffer.from(fileBase64, 'base64');
 
       // Check Word documents
@@ -434,7 +438,7 @@ app.post('/api/ai/parse-old-resume', async (req, res) => {
         } catch {
           textContent = extractPrintableFromDoc(buffer);
         }
-      } else if (lowerName.endsWith('.pdf') || mimeType === 'application/pdf') {
+      } else if (isPdf) {
         // PDF document: Pass directly to Gemini multimodal via inlineData!
         inlineMediaPart = {
           inlineData: {
@@ -442,32 +446,14 @@ app.post('/api/ai/parse-old-resume', async (req, res) => {
             data: fileBase64,
           },
         };
-      } else if (/\.(png|jpe?g|webp)$/i.test(lowerName) || mimeType?.startsWith('image/')) {
-        // Image document (scan / screenshot)
-        let normalizedMime = mimeType || 'image/png';
-        if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) normalizedMime = 'image/jpeg';
-        if (lowerName.endsWith('.png')) normalizedMime = 'image/png';
-        if (lowerName.endsWith('.webp')) normalizedMime = 'image/webp';
-
-        inlineMediaPart = {
-          inlineData: {
-            mimeType: normalizedMime,
-            data: fileBase64,
-          },
-        };
-      } else if (lowerName.endsWith('.rtf') || mimeType?.includes('rtf')) {
-        const rawText = buffer.toString('utf-8');
-        textContent = cleanRtf(rawText);
-      } else if (lowerName.endsWith('.txt') || lowerName.endsWith('.md') || mimeType?.startsWith('text/')) {
-        textContent = buffer.toString('utf-8');
       }
     }
 
-    // Validate that we have either inline media (PDF/image) or substantial text
+    // Validate that we have either inline media (PDF) or substantial Word text
     if (!inlineMediaPart && (!textContent || textContent.length < 20)) {
       return res.status(400).json({
         error:
-          'Please upload a valid resume file (PDF, Word .docx/.doc, PNG/JPG scan, TXT, RTF) or paste at least a few sentences of resume text.',
+          'Please upload your resume in PDF (.pdf) or Word (.docx, .doc) format, or paste your resume text.',
       });
     }
 

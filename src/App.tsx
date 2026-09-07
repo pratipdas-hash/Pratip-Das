@@ -110,8 +110,6 @@ export default function App() {
   });
   const [saveToast, setSaveToast] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
   // Auto-save to localStorage on every change
   React.useEffect(() => {
     localStorage.setItem('ats_resume_data', JSON.stringify(resume));
@@ -242,28 +240,6 @@ export default function App() {
     });
   };
 
-  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const parsed = JSON.parse(event.target?.result as string);
-        if (parsed.resume) {
-          setResume(parsed.resume);
-          if (parsed.settings) setSettings(parsed.settings);
-        } else if (parsed.personalInfo) {
-          setResume(parsed);
-        }
-      } catch (err) {
-        alert('Invalid JSON resume format.');
-      }
-    };
-    reader.readAsText(file);
-    if (e.target) e.target.value = '';
-  };
-
   const resetToBaseline = () => {
     setSettings(defaultTemplateSettings);
   };
@@ -276,15 +252,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-['Inter',sans-serif]">
-      {/* Hidden file input for JSON import */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleImportJson}
-        accept=".json"
-        className="hidden"
-      />
-
       {/* Top Application Header */}
       <header className="no-print bg-white border-b border-slate-200 sticky top-0 z-40 px-4 py-2.5 shadow-2xs">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
@@ -485,13 +452,6 @@ export default function App() {
                 >
                   <FileCode className="w-3.5 h-3.5 text-slate-500" />
                   <span>Backup JSON</span>
-                </button>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full text-left px-3 py-1.5 hover:bg-slate-100 text-slate-700 flex items-center gap-2"
-                >
-                  <Upload className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Import JSON</span>
                 </button>
                 <div className="border-t border-slate-100 my-1" />
                 <button

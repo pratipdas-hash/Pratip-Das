@@ -31,7 +31,7 @@ interface UploadedFileInfo {
   size: number;
   type: string;
   base64: string;
-  formatType: 'pdf' | 'docx' | 'doc' | 'image' | 'text';
+  formatType: 'pdf' | 'docx' | 'doc';
   extractedText?: string;
 }
 
@@ -101,26 +101,38 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
 
   if (!isOpen) return null;
 
-  const getFormatType = (fileName: string, mimeType: string): 'pdf' | 'docx' | 'doc' | 'image' | 'text' => {
+  const getFormatType = (fileName: string, mimeType: string): 'pdf' | 'docx' | 'doc' | null => {
     const lower = fileName.toLowerCase();
     if (lower.endsWith('.pdf') || mimeType === 'application/pdf') return 'pdf';
     if (lower.endsWith('.docx') || mimeType.includes('wordprocessingml')) return 'docx';
     if (lower.endsWith('.doc') || mimeType.includes('msword')) return 'doc';
-    if (/\.(png|jpe?g|webp)$/i.test(lower) || mimeType.startsWith('image/')) return 'image';
-    return 'text';
+    return null;
   };
 
   const processSelectedFile = async (file: File) => {
     setError(null);
     setParsedPreview(null);
 
+    const lower = file.name.toLowerCase();
+
+    // Explicitly reject JSON files
+    if (lower.endsWith('.json') || file.type === 'application/json' || file.type.includes('json')) {
+      setError('JSON files are not supported. Please upload your resume in PDF (.pdf) or Word (.docx, .doc) format only.');
+      return;
+    }
+
+    // Strictly validate format
+    const formatType = getFormatType(file.name, file.type);
+    if (!formatType) {
+      setError('Unsupported file format. Please upload your resume in PDF (.pdf) or Word (.docx, .doc) format only.');
+      return;
+    }
+
     // File size limit check (25MB)
     if (file.size > 25 * 1024 * 1024) {
       setError('File is too large. Please upload a resume file under 25MB.');
       return;
     }
-
-    const formatType = getFormatType(file.name, file.type);
 
     // Read as Base64
     const reader = new FileReader();
@@ -143,8 +155,8 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
 
       setSelectedFile(fileInfo);
 
-      // If it's a Word or text file, attempt fast text extraction for user preview
-      if (formatType === 'docx' || formatType === 'doc' || formatType === 'text') {
+      // If it's a Word document, attempt fast text extraction for user preview
+      if (formatType === 'docx' || formatType === 'doc') {
         setExtractingText(true);
         try {
           const res = await fetch('/api/ai/extract-file-text', {
@@ -363,11 +375,11 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
                   Import & Migrate Past Resume
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
-                  PDF • Word • Any Format
+                  PDF & Word Only
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
-                Upload your existing resume in PDF, Word (.docx/.doc), Image scan, or text. AI parses and populates your template.
+                Upload your existing resume in PDF (.pdf) or Word (.docx / .doc) format only. JSON files are not supported.
               </p>
             </div>
           </div>
@@ -391,7 +403,7 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
               }`}
             >
               <UploadCloud className="w-3.5 h-3.5" />
-              <span>Upload File (PDF / Word / Scans)</span>
+              <span>Upload Document (PDF / Word)</span>
             </button>
             <button
               onClick={() => setActiveTab('paste')}
@@ -419,7 +431,7 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
 
         {/* Body */}
         <div className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
-          {/* TAB 1: File Upload (PDF, Word, Image, TXT) */}
+          {/* TAB 1: File Upload (PDF or Word only) */}
           {activeTab === 'upload' && (
             <div className="space-y-3">
               {!selectedFile ? (
@@ -437,7 +449,7 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".pdf,.docx,.doc,.txt,.rtf,.md,image/png,image/jpeg,image/webp"
+                    accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
                     onChange={handleFileInputChange}
                     className="hidden"
                   />
@@ -450,22 +462,21 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
                     Drag & Drop your resume here, or <span className="text-blue-600 underline">browse files</span>
                   </p>
                   <p className="text-[11px] text-slate-500 mb-3 max-w-md mx-auto">
-                    Seamlessly extracts work experience, dates, bullet points, skills, and education.
+                    Upload your resume in PDF or Word format. JSON and other file types are not accepted.
                   </p>
 
                   {/* Format Pills */}
                   <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-                    <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-700 font-semibold text-[10px] border border-red-200">
+                    <span className="px-2.5 py-1 rounded-lg bg-red-100 text-red-700 font-semibold text-[11px] border border-red-200 flex items-center gap-1">
+                      <FileText className="w-3 h-3" />
                       PDF (.pdf)
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 font-semibold text-[10px] border border-blue-200">
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-700 font-semibold text-[11px] border border-blue-200 flex items-center gap-1">
+                      <FileText className="w-3 h-3" />
                       Word (.docx / .doc)
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 font-semibold text-[10px] border border-purple-200">
-                      Scanned Image (.png, .jpg)
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-semibold text-[10px] border border-emerald-200">
-                      Text & Markdown (.txt, .md, .rtf)
+                    <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-500 font-medium text-[10px] border border-slate-200">
+                      No JSON accepted
                     </span>
                   </div>
                 </div>
@@ -478,20 +489,10 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
                         className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                           selectedFile.formatType === 'pdf'
                             ? 'bg-red-100 text-red-600'
-                            : selectedFile.formatType === 'docx' || selectedFile.formatType === 'doc'
-                            ? 'bg-blue-100 text-blue-600'
-                            : selectedFile.formatType === 'image'
-                            ? 'bg-purple-100 text-purple-600'
-                            : 'bg-emerald-100 text-emerald-600'
+                            : 'bg-blue-100 text-blue-600'
                         }`}
                       >
-                        {selectedFile.formatType === 'image' ? (
-                          <FileImage className="w-5 h-5" />
-                        ) : selectedFile.formatType === 'text' ? (
-                          <FileCode className="w-5 h-5" />
-                        ) : (
-                          <FileText className="w-5 h-5" />
-                        )}
+                        <FileText className="w-5 h-5" />
                       </div>
                       <div>
                         <div className="font-bold text-slate-900 text-xs truncate max-w-sm">
@@ -529,7 +530,7 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".pdf,.docx,.doc,.txt,.rtf,.md,image/png,image/jpeg,image/webp"
+                        accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
                         onChange={handleFileInputChange}
                         className="hidden"
                       />
@@ -541,12 +542,8 @@ export const OldResumeImporterModal: React.FC<OldResumeImporterModalProps> = ({
                     <FileType className="w-4 h-4 text-blue-500 shrink-0" />
                     <span>
                       {selectedFile.formatType === 'pdf'
-                        ? 'Gemini Multimodal AI will inspect visual hierarchy, sidebars, multi-column blocks, and dates directly.'
-                        : selectedFile.formatType === 'docx' || selectedFile.formatType === 'doc'
-                        ? 'Word document extracted. All headings, bullet lists, dates, and experience blocks are primed for migration.'
-                        : selectedFile.formatType === 'image'
-                        ? 'High-resolution OCR vision will scan and extract all text, roles, and sections from this image.'
-                        : 'Clean text extracted and ready for AI structuring.'}
+                        ? 'Gemini Multimodal AI will inspect visual hierarchy, sidebars, multi-column blocks, and dates directly from this PDF.'
+                        : 'Word document extracted. All headings, bullet lists, dates, and experience blocks are primed for migration.'}
                     </span>
                   </div>
 
